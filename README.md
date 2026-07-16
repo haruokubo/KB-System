@@ -10,3 +10,6 @@ Internal KB + AI-assisted search for L2/L3 support engineers.
 
 ## Test
 `npm test`
+
+## Known Issues
+- **npm audit: 2 moderate findings, `postcss <8.5.10` (XSS via unescaped `</style>`, [GHSA-qx2v-qp2m-jg93](https://github.com/advisories/GHSA-qx2v-qp2m-jg93))** — transitive via `next`'s own bundled copy (`node_modules/next/node_modules/postcss`), not this project's code. `npm audit fix --force` only resolves it by downgrading `next` to `9.3.3`, which is not viable. Tracked as an accepted exception; re-check `npm audit` whenever `next` is upgraded.
