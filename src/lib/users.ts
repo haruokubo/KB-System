@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import bcrypt from 'bcrypt'
 import { prisma } from '@/lib/db'
-import type { Role, User } from '@prisma/client'
+import type { Role, User } from '@/generated/prisma/client'
 
 export function generateTempPassword(): string {
   return crypto.randomBytes(12).toString('base64url').slice(0, 16)
