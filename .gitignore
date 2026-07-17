@@ -43,3 +43,5 @@ next-env.d.ts
 
 # superpowers/SDD workflow scratch space (briefs, ledgers) — never commit
 .superpowers/
+
+/src/generated/prisma

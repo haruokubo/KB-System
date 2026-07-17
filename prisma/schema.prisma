@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  admin
+  editor
+  read_only
+}
+
+enum DocType {
+  kb_article
+  sop
+  work_instruction
+  known_issue
+  runbook
+  faq
+  troubleshooting_guide
+}
+
+enum ArticleStatus {
+  draft
+  published
+}
+
+model User {
+  id                String      @id @default(cuid())
+  email             String      @unique
+  name              String
+  role              Role
+  passwordHash      String
+  mustResetPassword Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+  articles          KbArticle[]
+}
+
+model KbArticle {
+  id                String        @id @default(cuid())
+  title             String
+  docType           DocType
+  environment       String?
+  affectedServices  String[]
+  symptoms          String?
+  errorMessages     String[]
+  rootCause         String?
+  resolution        String?
+  alternativeFixes  String?
+  verificationSteps String?
+  prevention        String?
+  relatedKbIds      String[]
+  relatedTicketRefs String[]
+  keywords          String[]
+  summary           String?
+  category          String?
+  status            ArticleStatus @default(draft)
+  authorId          String
+  author            User          @relation(fields: [authorId], references: [id])
+  lastReviewed      DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  attachments       Attachment[]
+  tags              Tag[]         @relation("ArticleTags")
+}
+
+model Attachment {
+  id          String    @id @default(cuid())
+  articleId   String
+  article     KbArticle @relation(fields: [articleId], references: [id])
+  blobUrl     String
+  filename    String
+  contentType String
+  size        Int
+  createdAt   DateTime  @default(now())
+}
+
+model Tag {
+  id       String      @id @default(cuid())
+  name     String      @unique
+  articles KbArticle[] @relation("ArticleTags")
+}
