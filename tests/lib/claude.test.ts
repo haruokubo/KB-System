@@ -23,6 +23,43 @@ describe('extractMetadata', () => {
       category: 'Email',
     })
   })
+
+  it('parses a response wrapped in markdown code fences', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-api-key'
+    mockCreate.mockResolvedValue({
+      content: [{
+        type: 'text',
+        text: 'Here is the metadata:\n```json\n{"keywords":["outlook","ost"],"tags":["Exchange Online"],"summary":"Corrupt OST fix.","category":"Email"}\n```',
+      }],
+    })
+    const result = await extractMetadata('Outlook will not open due to corrupt OST cache.')
+    expect(result).toEqual({
+      keywords: ['outlook', 'ost'],
+      tags: ['Exchange Online'],
+      summary: 'Corrupt OST fix.',
+      category: 'Email',
+    })
+  })
+
+  it('throws a clear error when the response is malformed/non-JSON', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-api-key'
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: 'Sorry, I could not process that article.' }],
+    })
+    await expect(extractMetadata('some article')).rejects.toThrow(
+      /extractMetadata: failed to parse Claude response as JSON/
+    )
+  })
+
+  it('throws a clear error when the parsed JSON does not match the expected shape', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-api-key'
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: '{"keywords":["outlook"],"tags":["Exchange Online"],"summary":"Corrupt OST fix."}' }],
+    })
+    await expect(extractMetadata('some article')).rejects.toThrow(
+      /extractMetadata: Claude response did not match expected shape/
+    )
+  })
 })
 
 describe('synthesizeAnswer', () => {
