@@ -13,6 +13,10 @@ const { auth } = NextAuth(authConfig)
 
 export function canAccess(role: Role, path: string, method: string): boolean {
   if (role === 'admin') return true
+  // Self-service password reset: every authenticated role must be able to
+  // complete a forced reset on first login, even though the rest of
+  // /api/users/* (admin-only user management) stays restricted below.
+  if (path === '/api/users/reset-password' && method === 'POST') return true
   if (path.startsWith('/api/users')) return false
   if (path.startsWith('/api/articles')) {
     if (method === 'GET') return true

@@ -17,4 +17,18 @@ describe('canAccess', () => {
   it('allows admin everything', () => {
     expect(canAccess('admin', '/api/users', 'POST')).toBe(true)
   })
+  it('allows editor to self-service reset their password', () => {
+    expect(canAccess('editor', '/api/users/reset-password', 'POST')).toBe(true)
+  })
+  it('allows read_only to self-service reset their password', () => {
+    expect(canAccess('read_only', '/api/users/reset-password', 'POST')).toBe(true)
+  })
+  it('blocks editor from other user-management paths', () => {
+    expect(canAccess('editor', '/api/users', 'POST')).toBe(false)
+    expect(canAccess('editor', '/api/users/some-id', 'GET')).toBe(false)
+  })
+  it('blocks read_only from other user-management paths', () => {
+    expect(canAccess('read_only', '/api/users', 'POST')).toBe(false)
+    expect(canAccess('read_only', '/api/users/some-id', 'GET')).toBe(false)
+  })
 })
