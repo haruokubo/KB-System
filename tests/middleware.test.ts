@@ -31,4 +31,16 @@ describe('canAccess', () => {
     expect(canAccess('read_only', '/api/users', 'POST')).toBe(false)
     expect(canAccess('read_only', '/api/users/some-id', 'GET')).toBe(false)
   })
+  it('allows editor to view the article page routes', () => {
+    expect(canAccess('editor', '/articles/new', 'GET')).toBe(true)
+    expect(canAccess('editor', '/articles/some-id', 'GET')).toBe(true)
+  })
+  it('allows read_only to view the article page routes', () => {
+    expect(canAccess('read_only', '/articles/new', 'GET')).toBe(true)
+    expect(canAccess('read_only', '/articles/some-id', 'GET')).toBe(true)
+  })
+  it('allows editor and read_only to view the search page route', () => {
+    expect(canAccess('editor', '/search', 'GET')).toBe(true)
+    expect(canAccess('read_only', '/search', 'GET')).toBe(true)
+  })
 })

@@ -23,6 +23,11 @@ export function canAccess(role: Role, path: string, method: string): boolean {
     return role === 'editor'
   }
   if (path.startsWith('/api/search')) return method === 'GET'
+  // Page routes (no /api prefix): the UI itself is readable by any
+  // authenticated role. Real write enforcement happens at the /api/articles
+  // POST/PUT rules above, which the page's own fetch calls hit.
+  if (path.startsWith('/articles')) return method === 'GET'
+  if (path === '/search') return method === 'GET'
   return false
 }
 
