@@ -154,4 +154,19 @@ describe('PUT /api/articles/:id', () => {
     expect(res.status).toBe(200)
     expect(prisma.kbArticle.update).toHaveBeenCalledWith({ where: { id: 'a1' }, data: { title: 'New title' } })
   })
+
+  it('clears an array field when it is explicitly sent as empty', async () => {
+    mockedAuth.mockResolvedValue(fakeSession('editor'))
+    vi.mocked(prisma.kbArticle.update).mockResolvedValue(fakeArticle({ title: 'New title', affectedServices: [] }))
+    const req = new Request('http://x/api/articles/a1', {
+      method: 'PUT',
+      body: JSON.stringify({ title: 'New title', affectedServices: [] }),
+    })
+    const res = await PUT(req, { params: Promise.resolve({ id: 'a1' }) })
+    expect(res.status).toBe(200)
+    expect(prisma.kbArticle.update).toHaveBeenCalledWith({
+      where: { id: 'a1' },
+      data: { title: 'New title', affectedServices: [] },
+    })
+  })
 })
