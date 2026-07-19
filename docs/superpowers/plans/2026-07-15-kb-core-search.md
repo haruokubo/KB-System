@@ -2507,6 +2507,143 @@ git commit -m "docs: finalize README with setup, test, deploy, and scope pointer
 
 ---
 
+### Task 19: Server-Side Audit Logging (added after final whole-branch review)
+
+**Why:** the final whole-branch review found that the only telemetry in the app is
+client-side `appInsights.trackPageView()` (Task 16) — no API route or lib module
+logs anything server-side. For Fornida's CMMC 2.0 L1 / SOC 2 posture, privileged
+actions (login success/failure, password reset, article publish, user writes)
+need an audit trail. This task adds that, using the Azure resources already
+provisioned in Task 17 (Application Insights) rather than a new service.
+
+**Files:**
+- Create: `src/lib/logger.ts`
+- Modify: `src/lib/auth.ts` (log login success/failure)
+- Modify: `src/app/api/users/reset-password/route.ts` (log password reset)
+- Modify: `src/app/api/articles/route.ts` (log article create)
+- Modify: `src/app/api/articles/[id]/route.ts` (log article update)
+- Modify: `src/app/api/articles/[id]/publish/route.ts` (log publish)
+- Test: `tests/lib/logger.test.ts`
+
+**Interfaces:**
+- Consumes: `APPLICATIONINSIGHTS_CONNECTION_STRING` env var (server-side, distinct
+  from Task 16's `NEXT_PUBLIC_APPINSIGHTS_CONNECTION_STRING` — this one must NOT
+  be prefixed `NEXT_PUBLIC_`, since it's a server secret, not something to ship
+  to the browser bundle).
+- Produces: `logAuditEvent(name: string, properties: Record<string, string | number | boolean>): void`
+  — consumed by every route/module listed above.
+
+- [ ] **Step 1: Install the Node Application Insights SDK**
+
+Run: `npm install applicationinsights`
+
+- [ ] **Step 2: Write failing test**
+
+Create `tests/lib/logger.test.ts`:
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const mockTrackEvent = vi.fn()
+vi.mock('applicationinsights', () => ({
+  defaultClient: { trackEvent: mockTrackEvent },
+  setup: vi.fn().mockReturnThis(),
+  start: vi.fn(),
+}))
+
+import { logAuditEvent } from '@/lib/logger'
+
+describe('logAuditEvent', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('sends the event name and properties to Application Insights when configured', () => {
+    process.env.APPLICATIONINSIGHTS_CONNECTION_STRING = 'InstrumentationKey=test'
+    logAuditEvent('article.publish', { articleId: 'a1', role: 'editor' })
+    expect(mockTrackEvent).toHaveBeenCalledWith({
+      name: 'article.publish',
+      properties: { articleId: 'a1', role: 'editor' },
+    })
+  })
+
+  it('does not throw when Application Insights is not configured', () => {
+    delete process.env.APPLICATIONINSIGHTS_CONNECTION_STRING
+    expect(() => logAuditEvent('article.publish', { articleId: 'a1' })).not.toThrow()
+  })
+})
+```
+
+- [ ] **Step 3: Run test to verify it fails**
+
+Run: `npm test -- tests/lib/logger.test.ts`
+Expected: FAIL — `@/lib/logger` does not exist
+
+- [ ] **Step 4: Implement**
+
+Create `src/lib/logger.ts`:
+
+```typescript
+import * as appInsights from 'applicationinsights'
+
+let started = false
+
+function ensureStarted(): boolean {
+  if (started) return true
+  const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING
+  if (!connectionString) return false
+  appInsights.setup(connectionString).start()
+  started = true
+  return true
+}
+
+export function logAuditEvent(
+  name: string,
+  properties: Record<string, string | number | boolean>
+): void {
+  if (!ensureStarted()) return
+  appInsights.defaultClient.trackEvent({ name, properties })
+}
+```
+
+- [ ] **Step 5: Run test to verify it passes**
+
+Run: `npm test -- tests/lib/logger.test.ts`
+Expected: PASS
+
+- [ ] **Step 6: Wire into auth (login success/failure)**
+
+In `src/lib/auth.ts`'s `authorizeCredentials`, call `logAuditEvent('auth.login_success', { email: creds.email })` on a successful return and `logAuditEvent('auth.login_failure', { email: creds.email })` on each `null` return path (wrong password, no user). Never log the password itself.
+
+- [ ] **Step 7: Wire into reset-password, article create/update/publish**
+
+Add one `logAuditEvent(...)` call at the point each action succeeds:
+- `reset-password/route.ts`: `logAuditEvent('auth.password_reset', { userId: session.user.id })`
+- `articles/route.ts` POST: `logAuditEvent('article.create', { articleId: article.id, authorId, role })`
+- `articles/[id]/route.ts` PUT: `logAuditEvent('article.update', { articleId: params.id, role })`
+- `articles/[id]/publish/route.ts`: `logAuditEvent('article.publish', { articleId: params.id, role })`
+
+Never log article content, password hashes, or tokens — only ids/roles/emails needed to reconstruct "who did what, when."
+
+- [ ] **Step 8: Add the env var to `.env.example`**
+
+Add `APPLICATIONINSIGHTS_CONNECTION_STRING=""` (server-side, no `NEXT_PUBLIC_` prefix).
+
+- [ ] **Step 9: Run the full verification suite**
+
+Run: `npx tsc --noEmit`, `npx eslint .`, `npm test`, `npm run build` — all four clean.
+
+- [ ] **Step 10: Update README**
+
+Remove item 9 from "Known Gaps / Follow-ups" (audit logging) now that it's closed, or update it to note logging exists but hasn't been validated against a real Application Insights instance yet (this environment has no real connection string to test against for real).
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add server-side audit logging for auth and article write actions"
+```
+
+---
+
 ## Self-Review Notes
 
 - **Spec coverage:** architecture (Task 1,4,6,9,11,12,16), data model (Task 2), search/RAG flow (Task 10,11,12,13,14), ingestion (Task 6,7,8), auth/RBAC (Task 3,4,5), deployment (Task 16,17,18) — all six spec sections have at least one task.
