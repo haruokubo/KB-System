@@ -1726,6 +1726,99 @@ git add -A
 git commit -m "feat: add Azure AI Search hybrid indexing and query wrapper"
 ```
 
+- [ ] **Step 7: Close the index-schema gap — add `createIndexIfNotExists()`**
+
+**Why:** Task 12's review approved `indexChunks`/`hybridSearch`, but nothing in this plan creates the actual Azure AI Search **index** (the schema — fields, vector config, semantic config) inside the search *service*. Task 17's `infra/create-resources.sh` only runs `az search service create`, which provisions the empty service, not an index. Without this, `indexChunks` and `hybridSearch` have no index to talk to, and `hybridSearch`'s `queryType: 'semantic'` would throw at query time anyway, because a semantic configuration with no `defaultConfigurationName` is rejected by the service. This step was added after Task 12 was reviewed and approved, to close that gap.
+
+**Files:** `src/lib/search.ts`, `tests/lib/search.test.ts`
+
+Add to `src/lib/search.ts` (alongside the existing `SearchClient`-based `getClient()`): a `SearchIndexClient`-based `getIndexClient()` helper following the same env-var pattern, an `isNotFoundError()` guard, a `buildIndexSchema()` builder, and the exported function itself:
+
+```typescript
+import { SearchClient, SearchIndexClient, AzureKeyCredential, type SearchIndex } from '@azure/search-documents'
+
+// text-embedding-3-large's default (non-truncated) output dimensionality — see src/lib/embeddings.ts,
+// which does not pass a `dimensions` override, so every vector indexed/queried is this width.
+const VECTOR_DIMENSIONS = 3072
+const VECTOR_ALGORITHM_NAME = 'kb-hnsw'
+const VECTOR_PROFILE_NAME = 'kb-vector-profile'
+const SEMANTIC_CONFIG_NAME = 'kb-semantic-config'
+
+function getIndexClient(): { client: SearchIndexClient; indexName: string } {
+  const endpoint = process.env.AZURE_SEARCH_ENDPOINT
+  const apiKey = process.env.AZURE_SEARCH_API_KEY
+  const indexName = process.env.AZURE_SEARCH_INDEX_NAME
+  if (!endpoint || !apiKey || !indexName) throw new Error('Azure AI Search env vars not set')
+  return { client: new SearchIndexClient(endpoint, new AzureKeyCredential(apiKey)), indexName }
+}
+
+function isNotFoundError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && 'statusCode' in err && (err as { statusCode?: number }).statusCode === 404
+}
+
+function buildIndexSchema(indexName: string): SearchIndex {
+  return {
+    name: indexName,
+    fields: [
+      { name: 'id', type: 'Edm.String', key: true, filterable: true },
+      { name: 'articleId', type: 'Edm.String', filterable: true },
+      { name: 'section', type: 'Edm.String', filterable: true },
+      { name: 'text', type: 'Edm.String', searchable: true },
+      {
+        name: 'vector',
+        type: 'Collection(Edm.Single)',
+        searchable: true,
+        vectorSearchDimensions: VECTOR_DIMENSIONS,
+        vectorSearchProfileName: VECTOR_PROFILE_NAME,
+      },
+    ],
+    vectorSearch: {
+      algorithms: [{ name: VECTOR_ALGORITHM_NAME, kind: 'hnsw' }],
+      profiles: [{ name: VECTOR_PROFILE_NAME, algorithmConfigurationName: VECTOR_ALGORITHM_NAME }],
+    },
+    // `hybridSearch`'s `queryType: 'semantic'` throws at query time if the index has a semantic
+    // configuration but no `defaultConfigurationName` — set it explicitly so callers never have to
+    // pass a configuration name on every query.
+    semanticSearch: {
+      defaultConfigurationName: SEMANTIC_CONFIG_NAME,
+      configurations: [
+        {
+          name: SEMANTIC_CONFIG_NAME,
+          prioritizedFields: { contentFields: [{ name: 'text' }] },
+        },
+      ],
+    },
+  }
+}
+
+export async function createIndexIfNotExists(): Promise<void> {
+  const { client, indexName } = getIndexClient()
+  try {
+    await client.getIndex(indexName)
+    return
+  } catch (err) {
+    if (!isNotFoundError(err)) throw err
+  }
+  await client.createIndex(buildIndexSchema(indexName))
+}
+```
+
+Idempotency: `getIndex(indexName)` is checked first; a 404 means "not found" and falls through to `createIndex`; any other error (auth failure, throttling, etc.) is rethrown rather than misread as "missing." If the index already exists, `getIndex` resolves and the function returns without calling `createIndex` — safe to call on every app startup.
+
+Add to `tests/lib/search.test.ts`: extend the `@azure/search-documents` mock with a `SearchIndexClient` class exposing `getIndex`/`createIndex` mocks, then add a `describe('createIndexIfNotExists', ...)` block with three cases — (1) `getIndex` rejects with `{ statusCode: 404 }` → asserts `createIndex` is called once with the exact schema (fields, `vectorSearch`, `semanticSearch.defaultConfigurationName`); (2) `getIndex` resolves (index already exists) → asserts `createIndex` is never called; (3) `getIndex` rejects with a non-404 error → asserts it propagates and `createIndex` is never called.
+
+- [ ] **Step 8: Run test to verify it passes**
+
+Run: `npm test -- tests/lib/search.test.ts`
+Expected: PASS (all `indexChunks`/`hybridSearch`/`createIndexIfNotExists` cases green)
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add createIndexIfNotExists to provision the Azure AI Search index schema"
+```
+
 ---
 
 ### Task 13: Publish Pipeline (Chunk -> Embed -> Index) + Auto-Tag
