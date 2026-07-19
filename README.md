@@ -8,7 +8,7 @@ and deferred scope (ticket DB, script repo, workflow trees, dashboards, etc).
 
 ## Stack
 
-Next.js 15 (App Router, TS) monolith. Azure Postgres Flexible (Prisma). Azure
+Next.js 16 (App Router, TS) monolith. Azure Postgres Flexible (Prisma). Azure
 Blob Storage. Azure AI Search (hybrid keyword+semantic+vector). Azure OpenAI
 (embeddings only). Claude (Anthropic SDK, all chat/reasoning). NextAuth
 credentials auth, 3-tier RBAC (admin/editor/read_only).
