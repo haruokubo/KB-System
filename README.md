@@ -83,6 +83,21 @@ tracked gap worth closing before it bites someone.
      Azure AI Foundry portal — it is not scripted and must be done by hand.
 7. **npm audit exceptions** — already tracked; see "Known Issues" below.
    Don't duplicate here, just keep that section accurate.
+8. **Search index drifts from the database on edit; no delete/unpublish prune path.**
+   Indexing only happens in `POST /api/articles/[id]/publish`. `PUT
+   /api/articles/[id]` updates Postgres but never re-indexes, so editing an
+   already-published article leaves stale chunks/vectors in Azure AI Search.
+   There is also no `DELETE` route and no `deleteDocuments` call anywhere, so
+   there's no way to remove an article from the index at all. Low reach today
+   (the edit UI in gap #3 doesn't exist yet), but the `PUT` endpoint is live
+   and editor-reachable. Re-index on publish-of-an-already-published article,
+   and add an index-prune step when delete/unpublish ships.
+9. **No server-side or audit logging anywhere in the app.** The only telemetry
+   is client-side `appInsights.trackPageView()`. No API route or lib module
+   logs auth events, writes, or publish actions. For Fornida's CMMC 2.0 L1 /
+   SOC 2 posture, shipping without any audit trail on privileged actions
+   (login, password reset, article publish, user management) should be a
+   conscious, reviewed decision before this leaves pilot — not a silent gap.
 
 ## Known Issues
 - **npm audit: 2 moderate findings, `postcss <8.5.10` (XSS via unescaped `</style>`, [GHSA-qx2v-qp2m-jg93](https://github.com/advisories/GHSA-qx2v-qp2m-jg93))** — transitive via `next`'s own bundled copy (`node_modules/next/node_modules/postcss`), not this project's code. `npm audit fix --force` only resolves it by downgrading `next` to `9.3.3`, which is not viable. Tracked as an accepted exception; re-check `npm audit` whenever `next` is upgraded.

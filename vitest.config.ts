@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
@@ -25,6 +25,10 @@ export default defineConfig({
     // more headroom to reduce flake odds.
     testTimeout: 10000,
     setupFiles: ['./tests/setup.ts'],
+    // Exclude .claude/ so an orphaned git worktree or agent scratch space
+    // under it can never be silently picked up and double-run/diverge from
+    // the real suite (bit once by exactly this during development).
+    exclude: [...configDefaults.exclude, '.claude/**'],
     server: {
       // Force next-auth through Vite's transform/resolve pipeline (so the
       // `next/server` alias above applies) instead of letting Node's native
