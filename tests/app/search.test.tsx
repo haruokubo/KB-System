@@ -18,4 +18,19 @@ describe('SearchPage', () => {
     expect(screen.getByText('Recreate profile')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/search?q=outlook+crash')
   })
+
+  it('shows an error message instead of crashing when the response is not ok', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Missing q parameter' }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<SearchPage />)
+    fireEvent.click(screen.getByText('Search'))
+
+    await waitFor(() => expect(screen.getByText('Missing q parameter')).toBeInTheDocument())
+    expect(screen.queryByText(/Probable cause/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Source articles')).not.toBeInTheDocument()
+  })
 })

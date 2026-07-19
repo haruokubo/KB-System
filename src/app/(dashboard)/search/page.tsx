@@ -7,15 +7,37 @@ interface SearchResult {
   score: number
 }
 
+function extractError(body: unknown): string {
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'error' in body &&
+    typeof (body as { error: unknown }).error === 'string'
+  ) {
+    return (body as { error: string }).error
+  }
+  return 'Something went wrong'
+}
+
 export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleSearch() {
     setLoading(true)
+    setError(null)
     const res = await fetch(`/api/search?${new URLSearchParams({ q: query })}`)
+    if (!res.ok) {
+      const body: unknown = await res.json()
+      setError(extractError(body))
+      setAnswer(null)
+      setResults([])
+      setLoading(false)
+      return
+    }
     const body = await res.json()
     setAnswer(body.answer)
     setResults(body.results)
@@ -35,6 +57,7 @@ export default function SearchPage() {
         <button onClick={handleSearch} className="bg-black text-white rounded px-4">Search</button>
       </div>
       {loading && <p>Searching...</p>}
+      {error && <p className="text-red-600 text-sm">{error}</p>}
       {answer && (
         <section className="bg-gray-50 border rounded p-4 whitespace-pre-wrap">{answer}</section>
       )}
