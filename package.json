@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
+    "@azure/search-documents": "^13.0.0",
     "@azure/storage-blob": "^12.33.0",
     "@base-ui/react": "^1.6.0",
     "@prisma/adapter-pg": "^7.8.0",
