@@ -19,6 +19,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    setupFiles: ['./tests/setup.ts'],
     server: {
       // Force next-auth through Vite's transform/resolve pipeline (so the
       // `next/server` alias above applies) instead of letting Node's native
