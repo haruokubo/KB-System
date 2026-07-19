@@ -20,6 +20,7 @@
     "@azure/search-documents": "^13.0.0",
     "@azure/storage-blob": "^12.33.0",
     "@base-ui/react": "^1.6.0",
+    "@microsoft/applicationinsights-web": "^3.4.3",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcrypt": "^6.0.0",

@@ -19,6 +19,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Bumped from vitest's 5000ms default: a bcrypt cost-12 hashing test in
+    // tests/lib/users.test.ts was seen to time out once under full-suite
+    // load. CI runners can be slower/noisier than local dev, so give tests
+    // more headroom to reduce flake odds.
+    testTimeout: 10000,
     setupFiles: ['./tests/setup.ts'],
     server: {
       // Force next-auth through Vite's transform/resolve pipeline (so the
