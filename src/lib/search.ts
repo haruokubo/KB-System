@@ -37,10 +37,6 @@ function getIndexClient(): { client: SearchIndexClient; indexName: string } {
   return { client: new SearchIndexClient(endpoint, new AzureKeyCredential(apiKey)), indexName }
 }
 
-function isNotFoundError(err: unknown): boolean {
-  return typeof err === 'object' && err !== null && 'statusCode' in err && (err as { statusCode?: number }).statusCode === 404
-}
-
 function buildIndexSchema(indexName: string): SearchIndex {
   return {
     name: indexName,
@@ -78,13 +74,10 @@ function buildIndexSchema(indexName: string): SearchIndex {
 
 export async function createIndexIfNotExists(): Promise<void> {
   const { client, indexName } = getIndexClient()
-  try {
-    await client.getIndex(indexName)
-    return
-  } catch (err) {
-    if (!isNotFoundError(err)) throw err
-  }
-  await client.createIndex(buildIndexSchema(indexName))
+  // `createOrUpdateIndex` is an atomic upsert (PUT semantics) on the Azure AI Search service —
+  // unlike a check-then-act getIndex()/createIndex() pair, it has no race window when concurrent
+  // cold starts call this at the same time.
+  await client.createOrUpdateIndex(buildIndexSchema(indexName))
 }
 
 export async function indexChunks(entries: IndexEntry[]): Promise<void> {

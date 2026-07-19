@@ -2,16 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockUploadDocuments = vi.fn().mockResolvedValue({})
 const mockSearch = vi.fn()
-const mockGetIndex = vi.fn()
-const mockCreateIndex = vi.fn()
+const mockCreateOrUpdateIndex = vi.fn()
 vi.mock('@azure/search-documents', () => ({
   SearchClient: class {
     uploadDocuments = mockUploadDocuments
     search = mockSearch
   },
   SearchIndexClient: class {
-    getIndex = mockGetIndex
-    createIndex = mockCreateIndex
+    createOrUpdateIndex = mockCreateOrUpdateIndex
   },
   AzureKeyCredential: class {},
 }))
@@ -24,8 +22,7 @@ beforeEach(() => {
   process.env.AZURE_SEARCH_INDEX_NAME = 'kb-chunks'
   mockUploadDocuments.mockReset().mockResolvedValue({})
   mockSearch.mockReset()
-  mockGetIndex.mockReset()
-  mockCreateIndex.mockReset().mockResolvedValue({})
+  mockCreateOrUpdateIndex.mockReset().mockResolvedValue({})
 })
 
 describe('indexChunks', () => {
@@ -70,13 +67,11 @@ describe('hybridSearch', () => {
 })
 
 describe('createIndexIfNotExists', () => {
-  it('creates the index with the id/articleId/section/text/vector schema when it does not exist yet', async () => {
-    mockGetIndex.mockRejectedValue({ statusCode: 404 })
-
+  it('creates or updates the index with the id/articleId/section/text/vector schema', async () => {
     await createIndexIfNotExists()
 
-    expect(mockCreateIndex).toHaveBeenCalledTimes(1)
-    expect(mockCreateIndex).toHaveBeenCalledWith({
+    expect(mockCreateOrUpdateIndex).toHaveBeenCalledTimes(1)
+    expect(mockCreateOrUpdateIndex).toHaveBeenCalledWith({
       name: 'kb-chunks',
       fields: [
         { name: 'id', type: 'Edm.String', key: true, filterable: true },
@@ -104,19 +99,18 @@ describe('createIndexIfNotExists', () => {
     })
   })
 
-  it('does not attempt to recreate the index when it already exists', async () => {
-    mockGetIndex.mockResolvedValue({ name: 'kb-chunks', fields: [] })
+  it('is idempotent — calling it again when the index already exists still resolves', async () => {
+    mockCreateOrUpdateIndex.mockResolvedValueOnce({ name: 'kb-chunks', fields: [] })
 
     await expect(createIndexIfNotExists()).resolves.toBeUndefined()
+    await expect(createIndexIfNotExists()).resolves.toBeUndefined()
 
-    expect(mockGetIndex).toHaveBeenCalledWith('kb-chunks')
-    expect(mockCreateIndex).not.toHaveBeenCalled()
+    expect(mockCreateOrUpdateIndex).toHaveBeenCalledTimes(2)
   })
 
-  it('propagates non-404 errors instead of treating them as "not found"', async () => {
-    mockGetIndex.mockRejectedValue({ statusCode: 500, message: 'service unavailable' })
+  it('propagates errors from the service', async () => {
+    mockCreateOrUpdateIndex.mockRejectedValue({ statusCode: 500, message: 'service unavailable' })
 
     await expect(createIndexIfNotExists()).rejects.toEqual({ statusCode: 500, message: 'service unavailable' })
-    expect(mockCreateIndex).not.toHaveBeenCalled()
   })
 })
