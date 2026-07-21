@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { articleInputSchema } from '@/lib/articleSchema'
+import { logAuditEvent } from '@/lib/logger'
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
   const article = await prisma.kbArticle.create({
     data: { ...parsed.data, authorId: userId, status: 'draft' },
   })
+  logAuditEvent('article.create', { articleId: article.id, authorId: userId, role })
   return Response.json(article, { status: 201 })
 }
 

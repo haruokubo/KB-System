@@ -3,13 +3,21 @@ import Credentials from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/db'
 import { verifyPassword } from '@/lib/users'
 import { authConfig } from '@/lib/auth.config'
+import { logAuditEvent } from '@/lib/logger'
 
 export async function authorizeCredentials(creds: { email: string; password: string } | undefined) {
   if (!creds?.email || !creds.password) return null
   const dbUser = await prisma.user.findUnique({ where: { email: creds.email } })
-  if (!dbUser) return null
+  if (!dbUser) {
+    logAuditEvent('auth.login_failure', { email: creds.email })
+    return null
+  }
   const valid = await verifyPassword(creds.password, dbUser.passwordHash)
-  if (!valid) return null
+  if (!valid) {
+    logAuditEvent('auth.login_failure', { email: creds.email })
+    return null
+  }
+  logAuditEvent('auth.login_success', { email: creds.email })
   return {
     id: dbUser.id,
     email: dbUser.email,

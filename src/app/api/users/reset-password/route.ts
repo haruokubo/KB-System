@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logAuditEvent } from '@/lib/logger'
 
 function extractNewPassword(body: unknown): unknown {
   if (typeof body !== 'object' || body === null || !('newPassword' in body)) {
@@ -26,5 +27,6 @@ export async function POST(req: Request) {
     where: { id: session.user.id },
     data: { passwordHash, mustResetPassword: false },
   })
+  logAuditEvent('auth.password_reset', { userId: session.user.id })
   return Response.json({ ok: true })
 }

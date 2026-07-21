@@ -92,12 +92,16 @@ tracked gap worth closing before it bites someone.
    (the edit UI in gap #3 doesn't exist yet), but the `PUT` endpoint is live
    and editor-reachable. Re-index on publish-of-an-already-published article,
    and add an index-prune step when delete/unpublish ships.
-9. **No server-side or audit logging anywhere in the app.** The only telemetry
-   is client-side `appInsights.trackPageView()`. No API route or lib module
-   logs auth events, writes, or publish actions. For Fornida's CMMC 2.0 L1 /
-   SOC 2 posture, shipping without any audit trail on privileged actions
-   (login, password reset, article publish, user management) should be a
-   conscious, reviewed decision before this leaves pilot — not a silent gap.
+9. **Server-side audit logging exists but is unvalidated against a real
+   Application Insights instance.** `src/lib/logger.ts` sends
+   `logAuditEvent(name, properties)` calls (login success/failure, password
+   reset, article create/update/publish) to Application Insights via
+   `APPLICATIONINSIGHTS_CONNECTION_STRING`, and is a no-op when that var is
+   unset. Unit-tested with a mocked SDK, but this dev environment has no real
+   connection string to test against, so the wiring has never been confirmed
+   against an actual App Insights resource (event delivery, property shape as
+   it lands, latency). Validate against the Task 17 Application Insights
+   instance before relying on this for a real audit trail.
 
 ## Known Issues
 - **npm audit: 2 moderate findings, `postcss <8.5.10` (XSS via unescaped `</style>`, [GHSA-qx2v-qp2m-jg93](https://github.com/advisories/GHSA-qx2v-qp2m-jg93))** — transitive via `next`'s own bundled copy (`node_modules/next/node_modules/postcss`), not this project's code. `npm audit fix --force` only resolves it by downgrading `next` to `9.3.3`, which is not viable. Tracked as an accepted exception; re-check `npm audit` whenever `next` is upgraded.

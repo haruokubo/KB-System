@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { extractMetadata } from '@/lib/claude'
 import { indexArticle } from '@/lib/indexArticle'
+import { logAuditEvent } from '@/lib/logger'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -23,5 +24,6 @@ export async function POST(_req: Request, { params }: RouteContext) {
     where: { id },
     data: { status: 'published', keywords: metadata.keywords, summary: metadata.summary, category: metadata.category },
   })
+  logAuditEvent('article.publish', { articleId: id, role })
   return Response.json({ ok: true })
 }

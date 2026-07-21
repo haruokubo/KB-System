@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { articleInputSchema, type ArticleInput } from '@/lib/articleSchema'
+import { logAuditEvent } from '@/lib/logger'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -53,5 +54,6 @@ export async function PUT(req: Request, { params }: RouteContext) {
 
   const { id } = await params
   const article = await prisma.kbArticle.update({ where: { id }, data })
+  logAuditEvent('article.update', { articleId: id, role })
   return Response.json(article)
 }
