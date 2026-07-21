@@ -33,6 +33,14 @@ describe('GET /api/search', () => {
     expect(res.status).toBe(400)
   })
 
+  it('rejects a q parameter over 1000 characters', async () => {
+    mockedAuth.mockResolvedValue(fakeSession())
+    const longQuery = 'a'.repeat(1001)
+    const res = await GET(new Request(`http://x/api/search?q=${longQuery}`))
+    expect(res.status).toBe(400)
+    expect(ragAnswer.getAnswer).not.toHaveBeenCalled()
+  })
+
   it('returns the RAG answer and results', async () => {
     mockedAuth.mockResolvedValue(fakeSession())
     vi.mocked(ragAnswer.getAnswer).mockResolvedValue({ answer: 'ans', results: [] })

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import bcrypt from 'bcrypt'
 import { authorizeCredentials } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import * as users from '@/lib/users'
@@ -6,6 +7,7 @@ import type { Role, User } from '@/generated/prisma/client'
 
 vi.mock('@/lib/db', () => ({ prisma: { user: { findUnique: vi.fn() } } }))
 vi.mock('@/lib/users', () => ({ verifyPassword: vi.fn() }))
+vi.mock('bcrypt', () => ({ default: { compare: vi.fn(), hash: vi.fn() } }))
 
 describe('authorizeCredentials', () => {
   afterEach(() => vi.clearAllMocks())
@@ -47,5 +49,14 @@ describe('authorizeCredentials', () => {
   it('returns null when no user exists', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
     expect(await authorizeCredentials({ email: 'nobody@b.com', password: 'pw' })).toBeNull()
+  })
+
+  it('runs a dummy bcrypt.compare when no user exists, to avoid a timing side-channel', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
+    await authorizeCredentials({ email: 'nobody@b.com', password: 'pw' })
+    expect(bcrypt.compare).toHaveBeenCalledTimes(1)
+    expect(bcrypt.compare).toHaveBeenCalledWith('pw', expect.any(String))
+    // verifyPassword (the real-user path) must not also run for a nonexistent user
+    expect(users.verifyPassword).not.toHaveBeenCalled()
   })
 })

@@ -45,3 +45,9 @@ next-env.d.ts
 .superpowers/
 
 /src/generated/prisma
+
+# Claude Code harness state — machine-local (session GUIDs, absolute paths,
+# local username), no secrets, but not meant to be shared via the repo
+.claude/
+.permlog/
+.timelog/
