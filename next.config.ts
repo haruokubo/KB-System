@@ -27,9 +27,27 @@ import type { NextConfig } from "next";
 //   itself injects no inline scripts. The 'unsafe-inline' allowance here is
 //   for Next.js App Router's own inline hydration/streaming scripts
 //   (`self.__next_f.push(...)`), which this app does not use a nonce for.
+// - script-src also needs 'unsafe-eval', but only outside production:
+//   Next/React's dev-mode debug tooling (React DevTools hook instrumentation,
+//   the dev error overlay, Fast Refresh) relies on eval-based code generation
+//   that the production bundle doesn't use. Without it, `npm run dev` throws
+//   a persistent CSP violation in the dev overlay. `npm run build` / `next
+//   start` (`NODE_ENV === "production"`) keep the strict policy with no
+//   'unsafe-eval'.
+// - connect-src targets commercial Azure only (this project's design spec
+//   scopes to the southcentralUS commercial region). Azure sovereign clouds
+//   (Gov/China) issue App Insights connection strings with different
+//   EndpointSuffix/Location shapes that resolve to different ingestion hosts
+//   than the ones allow-listed below — out of scope for this pilot, not
+//   solved for; revisit if this project ever targets a sovereign cloud.
+const isProduction = process.env.NODE_ENV === "production";
+const scriptSrc = isProduction
+  ? "script-src 'self' 'unsafe-inline'"
+  : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",
