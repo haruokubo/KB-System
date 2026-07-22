@@ -1,4 +1,4 @@
-# KB System
+# REAL — Reliable Easy Access Library
 
 Internal Knowledge Management Platform for L2/L3 support engineers — KB article
 authoring plus AI-assisted search (single search box, cited troubleshooting

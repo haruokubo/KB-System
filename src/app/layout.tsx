@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KB System",
-  description: "Fornida internal knowledge base and AI-assisted troubleshooting search for L2/L3 support engineers.",
+  title: "REAL",
+  description: "Reliable Easy Access Library — Fornida's internal knowledge base and AI-assisted troubleshooting search for L2/L3 support engineers.",
 };
 
 export default function RootLayout({

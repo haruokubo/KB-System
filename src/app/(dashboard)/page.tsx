@@ -16,7 +16,7 @@ export default async function HomePage() {
     <div className="max-w-2xl mx-auto mt-12 space-y-8">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold">Welcome, {name}</h1>
-        <p className="text-sm text-gray-500">Fornida internal knowledge base</p>
+        <p className="text-sm text-gray-500">REAL — Reliable Easy Access Library</p>
       </div>
 
       <div className="flex gap-3">
