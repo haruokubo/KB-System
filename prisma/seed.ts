@@ -1,6 +1,13 @@
+import dotenv from 'dotenv'
 import { PrismaClient } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcrypt'
+
+// tsx doesn't auto-load env files the way Next.js does — match
+// prisma.config.ts's precedence (.env.local overrides .env) so `npm run
+// db:seed` works the same way `npm run dev` and `prisma migrate dev` do.
+dotenv.config()
+dotenv.config({ path: '.env.local', override: true })
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
