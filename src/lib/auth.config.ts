@@ -11,6 +11,15 @@ export const authConfig = {
   providers: [],
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
+  // Auth.js v5 only auto-trusts the request Host on platforms it can detect
+  // (e.g. Vercel). On any self-hosted target — Azure App Service (this
+  // project's actual deploy target, see infra/create-resources.sh), plain
+  // `next start`, Docker — every request is otherwise rejected with
+  // `UntrustedHost`. This app has no magic-link/email flow that derives a
+  // callback URL from the Host header (Credentials-only, fixed
+  // NEXTAUTH_URL), so trusting the host here doesn't reopen the
+  // host-header-injection risk that flag exists to guard against.
+  trustHost: true,
   callbacks: {
     jwt({ token, user }) {
       if (user) {

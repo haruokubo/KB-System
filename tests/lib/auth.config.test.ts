@@ -2,6 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { authConfig } from '@/lib/auth.config'
 import type { Role } from '@/generated/prisma/client'
 
+describe('authConfig', () => {
+  it('trusts the request host, since this app deploys to a self-hosted target (Azure App Service), not an auto-detected platform like Vercel', () => {
+    expect(authConfig.trustHost).toBe(true)
+  })
+})
+
 describe('authConfig callbacks', () => {
   it('jwt callback copies id/role/mustResetPassword from the sign-in user onto the token', () => {
     const token = authConfig.callbacks.jwt({
