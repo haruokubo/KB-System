@@ -14,12 +14,18 @@ export const authConfig = {
   callbacks: {
     jwt({ token, user }) {
       if (user) {
+        // `user.id` is only present on the object authorize() returns at
+        // sign-in — token.sub also carries it by NextAuth convention, but
+        // we set it explicitly here since this custom callback replaces
+        // (not merges with) the default jwt callback.
+        token.id = user.id as string
         token.role = user.role
         token.mustResetPassword = user.mustResetPassword
       }
       return token
     },
     session({ session, token }) {
+      session.user.id = token.id
       session.user.role = token.role
       session.user.mustResetPassword = token.mustResetPassword
       return session

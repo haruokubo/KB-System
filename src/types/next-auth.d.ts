@@ -31,6 +31,7 @@ declare module '@auth/core/types' {
 // source module directly for consistency with the fix above.
 declare module '@auth/core/jwt' {
   interface JWT {
+    id: string
     role: Role
     mustResetPassword: boolean
   }
