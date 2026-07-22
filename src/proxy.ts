@@ -28,6 +28,7 @@ export function canAccess(role: Role, path: string, method: string): boolean {
   // POST/PUT rules above, which the page's own fetch calls hit.
   if (path.startsWith('/articles')) return method === 'GET'
   if (path === '/search') return method === 'GET'
+  if (path === '/') return method === 'GET'
   return false
 }
 
@@ -43,5 +44,5 @@ export default auth(function proxy(req) {
 })
 
 export const config = {
-  matcher: ['/api/articles/:path*', '/api/users/:path*', '/api/search/:path*', '/articles/:path*', '/search'],
+  matcher: ['/api/articles/:path*', '/api/users/:path*', '/api/search/:path*', '/articles/:path*', '/search', '/'],
 }
