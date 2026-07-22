@@ -102,6 +102,14 @@ tracked gap worth closing before it bites someone.
    against an actual App Insights resource (event delivery, property shape as
    it lands, latency). Validate against the Task 17 Application Insights
    instance before relying on this for a real audit trail.
+10. **No rate limiting on `/api/search`.** Every call fans out to three paid
+    vendor APIs (Azure OpenAI embeddings, Azure AI Search, Claude). Any
+    authenticated user (including `read_only`) can script the search box and
+    drive unbounded vendor spend, or trip an upstream 429 that currently
+    surfaces as an opaque 500 with no retry-friendly message. Acceptable for
+    a small pilot team; add a per-user/IP throttle (even a coarse in-memory
+    or Postgres-backed limiter) and handle upstream 429s gracefully before
+    this scales beyond the pilot.
 
 ## Known Issues
 As of this pass, `npm audit` reports **21 vulnerabilities (15 moderate, 6 high, 0 low/critical)** across five independent advisory chains. `npm audit fix` (non-force) was run for real and already applied everything it could (it bumped `shadcn` and `prisma` patch versions, which is why this list is shorter than earlier passes) — nothing forceless remains. All five below require either a version this project has already ruled out or a major-version downgrade of a direct dependency; each is tracked as an accepted exception with its own re-check trigger. This list drifts as new advisories publish — re-run `npm audit` before trusting these exact numbers if much time has passed.
