@@ -70,6 +70,9 @@ model KbArticle {
   updatedAt         DateTime      @updatedAt
   attachments       Attachment[]
   tags              Tag[]         @relation("ArticleTags")
+  clientId          String?
+  client            Client?       @relation(fields: [clientId], references: [id])
+  tools             Tool[]        @relation("ArticleTools")
 }
 
 model Attachment {
@@ -87,4 +90,16 @@ model Tag {
   id       String      @id @default(cuid())
   name     String      @unique
   articles KbArticle[] @relation("ArticleTags")
+}
+
+model Client {
+  id       String      @id @default(cuid())
+  name     String      @unique
+  articles KbArticle[]
+}
+
+model Tool {
+  id       String      @id @default(cuid())
+  name     String      @unique
+  articles KbArticle[] @relation("ArticleTools")
 }

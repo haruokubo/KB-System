@@ -48,6 +48,7 @@ function fakeArticle(overrides: Partial<KbArticle> = {}): KbArticle {
     lastReviewed: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    clientId: null,
     ...overrides,
   }
 }
@@ -85,6 +86,42 @@ describe('POST /api/articles', () => {
     const res = await POST(req)
     expect(res.status).toBe(201)
     expect(prisma.kbArticle.create).toHaveBeenCalled()
+  })
+
+  it('connects client and tools by name when provided', async () => {
+    mockedAuth.mockResolvedValue(fakeSession('editor'))
+    vi.mocked(prisma.kbArticle.create).mockResolvedValue(fakeArticle())
+    const req = new Request('http://x/api/articles', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Outlook fix',
+        docType: 'kb_article',
+        client: 'Exalt Health',
+        tools: ['Sonicwall', 'Bullphish ID'],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    expect(prisma.kbArticle.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        client: { connect: { name: 'Exalt Health' } },
+        tools: { connect: [{ name: 'Sonicwall' }, { name: 'Bullphish ID' }] },
+      }),
+    })
+  })
+
+  it('omits the client relation and connects no tools when neither is provided', async () => {
+    mockedAuth.mockResolvedValue(fakeSession('editor'))
+    vi.mocked(prisma.kbArticle.create).mockResolvedValue(fakeArticle())
+    const req = new Request('http://x/api/articles', {
+      method: 'POST',
+      body: JSON.stringify({ title: 'Outlook fix', docType: 'kb_article' }),
+    })
+    await POST(req)
+    expect(prisma.kbArticle.create).toHaveBeenCalledTimes(1)
+    const call = vi.mocked(prisma.kbArticle.create).mock.calls.at(0)?.at(0)
+    expect(call?.data).not.toHaveProperty('client')
+    expect(call?.data).toEqual(expect.objectContaining({ tools: { connect: [] } }))
   })
 })
 
@@ -167,6 +204,51 @@ describe('PUT /api/articles/:id', () => {
     expect(prisma.kbArticle.update).toHaveBeenCalledWith({
       where: { id: 'a1' },
       data: { title: 'New title', affectedServices: [] },
+    })
+  })
+
+  it('connects only client when only client is provided, without touching tools', async () => {
+    mockedAuth.mockResolvedValue(fakeSession('editor'))
+    vi.mocked(prisma.kbArticle.update).mockResolvedValue(fakeArticle())
+    const req = new Request('http://x/api/articles/a1', {
+      method: 'PUT',
+      body: JSON.stringify({ client: 'Exalt Health' }),
+    })
+    const res = await PUT(req, { params: Promise.resolve({ id: 'a1' }) })
+    expect(res.status).toBe(200)
+    expect(prisma.kbArticle.update).toHaveBeenCalledWith({
+      where: { id: 'a1' },
+      data: { client: { connect: { name: 'Exalt Health' } } },
+    })
+  })
+
+  it('sets only tools when only tools is provided, without touching client', async () => {
+    mockedAuth.mockResolvedValue(fakeSession('editor'))
+    vi.mocked(prisma.kbArticle.update).mockResolvedValue(fakeArticle())
+    const req = new Request('http://x/api/articles/a1', {
+      method: 'PUT',
+      body: JSON.stringify({ tools: ['Sonicwall'] }),
+    })
+    const res = await PUT(req, { params: Promise.resolve({ id: 'a1' }) })
+    expect(res.status).toBe(200)
+    expect(prisma.kbArticle.update).toHaveBeenCalledWith({
+      where: { id: 'a1' },
+      data: { tools: { set: [{ name: 'Sonicwall' }] } },
+    })
+  })
+
+  it('clears tools when explicitly sent as empty, without touching client', async () => {
+    mockedAuth.mockResolvedValue(fakeSession('editor'))
+    vi.mocked(prisma.kbArticle.update).mockResolvedValue(fakeArticle())
+    const req = new Request('http://x/api/articles/a1', {
+      method: 'PUT',
+      body: JSON.stringify({ tools: [] }),
+    })
+    const res = await PUT(req, { params: Promise.resolve({ id: 'a1' }) })
+    expect(res.status).toBe(200)
+    expect(prisma.kbArticle.update).toHaveBeenCalledWith({
+      where: { id: 'a1' },
+      data: { tools: { set: [] } },
     })
   })
 })

@@ -27,7 +27,10 @@ export async function GET(_req: Request, { params }: RouteContext) {
   }
 
   const { id } = await params
-  const article = await prisma.kbArticle.findUnique({ where: { id } })
+  const article = await prisma.kbArticle.findUnique({
+    where: { id },
+    include: { client: true, tools: true },
+  })
   if (!article) {
     return Response.json({ error: 'Not found' }, { status: 404 })
   }
@@ -50,10 +53,29 @@ export async function PUT(req: Request, { params }: RouteContext) {
   const providedKeys = new Set(
     typeof body === 'object' && body !== null ? Object.keys(body) : [],
   )
-  const data = pickProvided(parsed.data, providedKeys)
+  const { client, tools, ...scalarData } = pickProvided(parsed.data, providedKeys)
 
   const { id } = await params
-  const article = await prisma.kbArticle.update({ where: { id }, data })
+  const article = await prisma.kbArticle.update({
+    where: { id },
+    data: {
+      ...scalarData,
+      // `client`/`tools` are relation fields resolved by name, not plain
+      // scalars — only touch them when the caller's raw body actually
+      // included the key, same partial-update rule pickProvided() enforces
+      // for the scalar/array fields above. For `tools` (a many-to-many),
+      // `connect` alone would only ever add rows and never remove ones the
+      // caller dropped, so an explicit `[]` wouldn't clear it the way it
+      // does for the plain array fields (see the "clears an array field"
+      // test) — use `set` to fully replace the tool list instead.
+      ...(providedKeys.has('client')
+        ? { client: client ? { connect: { name: client } } : { disconnect: true } }
+        : {}),
+      ...(providedKeys.has('tools') && tools
+        ? { tools: { set: tools.map((name) => ({ name })) } }
+        : {}),
+    },
+  })
   logAuditEvent('article.update', { articleId: id, role })
   return Response.json(article)
 }

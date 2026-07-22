@@ -110,6 +110,20 @@ tracked gap worth closing before it bites someone.
     a small pilot team; add a per-user/IP throttle (even a coarse in-memory
     or Postgres-backed limiter) and handle upstream 429s gracefully before
     this scales beyond the pilot.
+11. **Client/Tool tagging (Task 20) has no dedicated edit-form or filter UI
+    yet.** `Client` (single, optional) and `Tool` (multi-select) are real
+    Prisma tables (`prisma/schema.prisma`), reference data is upserted by
+    name in `prisma/seed.ts`, and `GET /api/clients` / `GET /api/tools` list
+    them. The new-article form (`src/app/(dashboard)/articles/new/page.tsx`)
+    lets an author pick them on create, and the view page shows them — but
+    per gap #3 there's still no edit form, so an article's client/tools can't
+    be changed once created (the `PUT /api/articles/[id]` API already
+    supports it). There's also no client/tool-based filtering on the search
+    or list views yet. `prisma/seed.ts`'s admin-user upsert now only runs
+    when `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` are set (it warns and skips
+    otherwise) so the script stays idempotent for the client/tool reference
+    data even in environments where the one-time admin bootstrap vars have
+    since been unset.
 
 ## Known Issues
 As of this pass, `npm audit` reports **21 vulnerabilities (15 moderate, 6 high, 0 low/critical)** across five independent advisory chains. `npm audit fix` (non-force) was run for real and already applied everything it could (it bumped `shadcn` and `prisma` patch versions, which is why this list is shorter than earlier passes) — nothing forceless remains. All five below require either a version this project has already ruled out or a major-version downgrade of a direct dependency; each is tracked as an accepted exception with its own re-check trigger. This list drifts as new advisories publish — re-run `npm audit` before trusting these exact numbers if much time has passed.

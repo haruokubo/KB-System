@@ -47,6 +47,7 @@ function fakeArticle(overrides: Partial<KbArticle> = {}): KbArticle {
     lastReviewed: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    clientId: null,
     ...overrides,
   }
 }

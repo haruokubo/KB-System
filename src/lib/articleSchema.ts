@@ -16,6 +16,8 @@ export const articleInputSchema = z.object({
   prevention: z.string().optional(),
   relatedKbIds: z.array(z.string()).default([]),
   relatedTicketRefs: z.array(z.string()).default([]),
+  client: z.string().optional(),
+  tools: z.array(z.string()).default([]),
 })
 
 export type ArticleInput = z.infer<typeof articleInputSchema>
